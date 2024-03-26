@@ -87,7 +87,7 @@ BUC_PRINT:
 	MOVE.B (A1)+,D1
 	BSR ESCCAR
 	MOVE.L D0,D2
-	MOVEM.L +(A7),D0-D1/A1
+	MOVEM.L (A7)+,D0-D1/A1
 	CMP.L #-1,D2
 	BEQ FIN_PRINT		* Ya no hay mas caracteres en el BuffIntierno
 	ADD.L #1,D0
@@ -124,7 +124,7 @@ BUC_SCAN:
 	MOVE.L D2,D0
 	BSR LEECAR
 	MOVE.L D0,D2
-	MOVEM.L +(A7),D0/A1
+	MOVEM.L (A7)+,D0/A1
 	CMP.L #-1,D2
 	BEQ FIN_SCAN		* Ya no hay mas caracteres en el BuffInt
 
@@ -141,9 +141,41 @@ FIN_SCAN:
 
 ******************** RTI *******************************
 RTI:
-		
+	MOVEM.L D0-D1/A1,-(A7)		* Salvaguada de registros
+	MOVE.L #2,D0
+	MOVE.L #TBA,A1
+	MOVE.B #%11111110,D1
+	BTST #3,SRA			* Transmision de A
+	BEQ TRANS_RTI
+	MOVE.L #RBA,A1
+	BTST #0,SRA			* Recepcion de A
+	BEQ REC_RTI
+	MOVE.L #3,D0
+	MOVE.L #TBB,A1
+	MOVE.B #%11110111,D1
+	BTST #3,SRB			* Transmision de B
+	BEQ TRANS_RTI
+	MOVE.L #RBB,A1
+	BTST #0,SRB			* Recepcion de B
+	BEQ REC_RTI
 
-        RTE
+TRANS_RTI:
+	BSR LEECAR
+	CMP.L #-1,D0
+	BEQ SLT1
+	MOVE.B D0,(A1)
+	BRA FIN_RTI
+SLT1:
+	AND.B D1,PIMR
+	MOVE.B PIMR,IMR
+	BRA FIN_RTI
+REC_RTI:
+	EOR.L D1,D1
+	MOVE.B (A1),D1
+	BSR ESCCAR
+FIN_RTI:
+	MOVEM.L (A7)+,D0-D1/A1 *Recuperacion de registros
+    RTE
 ******************* FIN RTI ***************************
 
 ******************* INICIO ****************************
