@@ -64,8 +64,44 @@ INIT:
 
 ****************** PRINT ******************************
 PRINT:
+	MOVE.L 4(A7),A1		* dir Buffer
+	EOR.L D2,D2
+	MOVE.W 8(A7),D2		* Descriptor
+	EOR.L D3,D3
+	MOVE.W 10(A7),D3	* Tamaño
+	MOVE.L #2,D1	 	* Mascara de interrupcion
 
-
+	MOVE.L #-1,D0
+	CMP.L #2,D2
+	BGE FIN_PRINT		* Mal paso de parametros
+	EOR.L D0,D0
+	CMP.L #0,D2
+	BEQ BUC_PRINT
+	MULS #8,D1			* Ajustar la mascara de interrupcion
+BUC_PRINT:
+	CMP.L D0,D3
+	BEQ FIN_PRINT		* Se ha completado el buffer
+	MOVEM.L D0-D1/A1,-(A7) * Salvaguarda de parametros
+	MOVE.L D2,D0
+	EOR.L D1,D1
+	MOVE.B (A1)+,D1
+	BSR ESCCAR
+	MOVE.L D0,D2
+	MOVEM.L +(A7),D0-D1/A1
+	CMP.L #-1,D2
+	BEQ FIN_PRINT		* Ya no hay mas caracteres en el BuffIntierno
+	ADD.L #1,D0
+	EOR.L D2,D2			* Recuperacion de los parametros
+	MOVE.W 8(A7),D2		* Descriptor
+	EOR.L D3,D3
+	MOVE.W 10(A7),D3	* Tamaño
+	MOVE.B PIMR,D4
+	AND.B D4,D1
+	BNE BUC_PRINT		* comprobar si esta habilitada la transmision
+	OR.B D1,PIMR
+	MOVE.B PIMR,IMR		* Havilitar las int de transmision de la linea
+	BRA BUC_PRINT
+FIN_PRINT:
 	RTS
 ***************** FIN PRINT **************************
 
@@ -105,7 +141,7 @@ FIN_SCAN:
 
 ******************** RTI *******************************
 RTI:
-
+		
 
         RTE
 ******************* FIN RTI ***************************
