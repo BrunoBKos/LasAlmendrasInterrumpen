@@ -69,7 +69,7 @@ PRINT:
 	MOVE.W 8(A7),D2		* Descriptor
 	EOR.L D3,D3
 	MOVE.W 10(A7),D3	* Tamaño
-	MOVE.L #2,D1	 	* Mascara de interrupcion
+	MOVE.L #1,D1	 	* Mascara de interrupcion
 
 	MOVE.L #-1,D0
 	CMP.L #2,D2
@@ -77,29 +77,28 @@ PRINT:
 	EOR.L D0,D0
 	CMP.L #0,D2
 	BEQ BUC_PRINT
-	MULS #8,D1			* Ajustar la mascara de interrupcion
+	MULS #16,D1			* Ajustar la mascara de interrupcion
+	ADD.L #2,D2
 BUC_PRINT:
 	CMP.L D0,D3
 	BEQ FIN_PRINT		* Se ha completado el buffer
-	MOVEM.L D0-D1/A1,-(A7) * Salvaguarda de parametros
+	MOVEM.L D0-D2/A1,-(A7) * Salvaguarda de parametros
 	MOVE.L D2,D0
 	EOR.L D1,D1
 	MOVE.B (A1)+,D1
 	BSR ESCCAR
-	MOVE.L D0,D2
-	MOVEM.L (A7)+,D0-D1/A1
-	CMP.L #-1,D2
-	BEQ FIN_PRINT		* Ya no hay mas caracteres en el BuffIntierno
-	ADD.L #1,D0
-	EOR.L D2,D2			* Recuperacion de los parametros
-	MOVE.W 8(A7),D2		* Descriptor
-	EOR.L D3,D3
-	MOVE.W 10(A7),D3	* Tamaño
-	MOVE.B PIMR,D4
-	AND.B D4,D1
+	MOVE.L D0,D4
+	MOVEM.L (A7)+,D0-D2/A1
+	CMP.L #-1,D4
+	BEQ FIN_PRINT		* Ya no hay mas caracteres en el BuffInterno
+	ADD.L #1,D0		
+	EOR.L D3,D3			* Recuperacion de parametros
+	MOVE.W 10(A7),D3	* Tamanho
+	MOVE.B PIMR,D5
+	AND.B D5,D1
 	BNE BUC_PRINT		* comprobar si esta habilitada la transmision
 	OR.B D1,PIMR
-	MOVE.B PIMR,IMR		* Havilitar las int de transmision de la linea
+	MOVE.B PIMR,IMR		* Habilitar las int de transmision de la linea
 	BRA BUC_PRINT
 FIN_PRINT:
 	RTS
@@ -141,23 +140,28 @@ FIN_SCAN:
 
 ******************** RTI *******************************
 RTI:
-	MOVEM.L D0-D1/A1,-(A7)		* Salvaguada de registros
-	MOVE.L #2,D0
+	MOVEM.L D0-D2/A1,-(A7)		* Salvaguada de registros
+	EOR.L D0,D0
+	EOR.L D2,D2					* Mascara
+	MOVE.B PIMR,D2
+	AND.B ISR,D2
 	MOVE.L #TBA,A1
 	MOVE.B #%11111110,D1
-	BTST #3,SRA			* Transmision de A
-	BEQ TRANS_RTI
+	BTST #3,D2			* Transmision de A
+	BNE TRANS_RTI
+	MOVE.L #2,D0
 	MOVE.L #RBA,A1
-	BTST #0,SRA			* Recepcion de A
-	BEQ REC_RTI
-	MOVE.L #3,D0
+	BTST #0,D2			* Recepcion de A
+	BNE REC_RTI
+	MOVE.L #1,D0
 	MOVE.L #TBB,A1
 	MOVE.B #%11110111,D1
-	BTST #3,SRB			* Transmision de B
-	BEQ TRANS_RTI
+	BTST #3,D2			* Transmision de B
+	BNE TRANS_RTI
+	MOVE.L #3,D0
 	MOVE.L #RBB,A1
-	BTST #0,SRB			* Recepcion de B
-	BEQ REC_RTI
+	BTST #0,D2			* Recepcion de B
+	BNE REC_RTI
 
 TRANS_RTI:
 	BSR LEECAR
@@ -174,7 +178,7 @@ REC_RTI:
 	MOVE.B (A1),D1
 	BSR ESCCAR
 FIN_RTI:
-	MOVEM.L (A7)+,D0-D1/A1 *Recuperacion de registros
+	MOVEM.L (A7)+,D0-D2/A1 *Recuperacion de registros
     RTE
 ******************* FIN RTI ***************************
 
